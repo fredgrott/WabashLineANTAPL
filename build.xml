@@ -255,6 +255,19 @@
 	                <fileset dir="${extensible.libs.classpath}" includes="*.jar" />
 	            </classpath>
 	        </javac>
+
+	    	<!-- post codeqa doc generation and codeqa checking subant
+	    	     tasks go here. We only need PMD, checkstyle,
+	    	      apiviz -->
+	    	<subant target="-apl.checkstyle">
+	    	                 <fileset dir="${basedir}" includes="build.xml"/>
+	    	</subant>
+	    	<subant target="-apl.pmd">
+	    	                <fileset dir="${basedir}" includes="build.xml"/>
+	    	</subant>
+	    	<subant target="-apl.apivizdoclet">
+	    	              <fileset dir="${basedir}" includes="build.xml"/>
+	    	</subant>
 	    </target>
 
 	    <target name="clean" description="Removes output files created by other targets.">
@@ -270,5 +283,175 @@
 	        <echo>   clean:     Removes output files created by other targets.</echo>
 	        <echo>   compile:   Compiles project's .java files into .class files.</echo>
 	    </target>
+
+	<!-- codeqa stuff, very much the same as in the projectapptest build.xml script
+	     file. -->
+	<property name="apl.build.dir" location="${basedir}/build"/>
+	    <property name="apl.docs.dir" location="${apl.build.dir}/docs"/>
+	    <mkdir dir="${apl.docs.dir}"/>
+	    <property name="apl.javadoc.dir" location="${apl.docs.dir}/javadoc"/>
+	    <property name="apl.javadoc.resources.dir"
+	        location="${apl.javadoc.dir}/resources"/>
+	    <mkdir dir="${apl.javadoc.resources.dir}"/>
+	    <property name="apl.docs.images.dir" location="${apl.docs.dir}/images"/>
+	    <mdkir dir="${apl.docs.images.dir}"/>
+	    <property name="apl.docs.fonts.dir" location="${apl.docs.dir}/fonts"/>
+	    <mkdir dir="${apl.docs.fonts.dir}"/>
+	    <property name="apl.docs.css.dir" location="${apl.docs.dir}/css"/>
+	    <mkdir dir="${apl.docs.css.dir}"/>
+	    <property name="buildsystem.anttasklibs.dir"
+	        location="${tested.project.dir}/buildsystem/anttasklibs"/>
+	    <property name="buildsystem.codeqa.dir"
+	        location="${tested.project.dir}/buildsystem/codeqa"/>
+	    <property name="buildsystem.codeqa.images.dir"
+	        location="${buildsystem.codeqa.dir}/images"/>
+	    <property name="buildsystem.codeqa.css.dir"
+	        location="${buildsystem.codeqa.dir}/css"/>
+	    <property name="buildsystem.codeqa.fonts.dir"
+	        location="${buildsystem.codeqa.dir}/fonts"/>
+	    <property name="buildsystem.apiviz.loc"
+	        location="${tested.project.dir}/buildsystem/apivizdoclet/apiviz-1.3.1.GA.jar"/>
+	    <copy todir="${apl.docs.css.dir}">
+	       <fileset dir="${buildsystem.codeqa.css.dir}" />
+	    </copy>
+	    <copy todir="${apl.docs.fonts.dir}">
+	       <fileset dir="${buildsystem.codeqa.fonts.dir}"/>
+	    </copy>
+	    <copy todir="${apl.docs.images.dir}">
+	       <fileset dir="${buildsystem.codeqa.images.dir}"/>
+	    </copy>
+	    <copy file="${buildsystem.codeqa.images.dir}/companylogo.png"
+	                todir="${apl.javadoc.resources.dir}"/>
+	    <path id="apl.anttasklibs.paths">
+	        <fileset dir="${buildsystem.anttasklibs.dir}" includes="**/*.jar"/>
+	    </path>
+	    <taskdef name="pmd" classname="net.sourceforge.pmd.ant.PMDTask"
+	             classpathref="apl.anttasklibs.paths"/>
+	    <taskdef resource="checkstyletask.properties"
+	             classpathref="apl.anttasklibs.paths"/>
+	    <property name="apl.checkstyle.file"
+	        location="${tested.project.dir}/buildsystem/codeqa/eclipse.checkstyle.android.xml"/>
+	    <property name="apl.checkstyle.xsl.loc"
+	        location="${tested.project.dir}/buildsystem/codeqa/xsls/checkstyle.xml"/>
+	    <property name="apl.pmd.ruleset.file"
+	        location="${tested.project.dir}/buildsystem/codeqa/ruleset.pmd.xml"/>
+	    <property name="apl.pmd.xsl.loc"
+	        location="${tested.project.dir}/buildsystem/codeqa/xsls/pmd.xsl"/>
+	    <path id="apl.javadoc.source">
+	                   <pathelement path="${source.absolute.dir}"/>
+	                   <pathelement path="${gen.absolute.dir}"/>
+	     </path>
+
+	            <!-- Path needs to include both Android jars and
+	                         3rd party library jars in libs
+	                 Need to included tested.project
+	                 classes to feed into javadoc task-->
+	     <path id="apl.android.project.libs">
+	                   <fileset dir="${native.libs.dir}">
+	                            <include name="**/*.jar"/>
+	                   </fileset>
+	                   <path refid="android.target.classpath"/>
+	                   <fileset dir="${tested.project.dir}/build/classes">
+	                         <include name="**/*.class"/>
+	                    </fileset>
+	      </path>
+
+	      <path id="apl.classes.classpath">
+	                <fileset dir="build/classes">
+	                    <include name="**/*.class"/>
+	                </fileset>
+	      </path>
+
+
+	    <target name="-apl.checkstyle">
+	            <checkstyle  config="${apl.checkstyle.file}"
+	                                       failureProperty="checkstyle.failure"
+	                                       failOnViolation="false">
+	                                       <formatter type="xml"
+	                                          tofile="${apl.docs.dir}/checkstyle.xml"/>
+	                                       <fileset dir="${source.absolute.dir}" includes="**/*.java"/>
+	                                       <classpath refid="apl.classes.classpath"/>
+	                                       <property key="checkstyle.cache.file" file="${basedir}/cachefile"/>
+	                                    </checkstyle>
+	                                    <xslt basedir="${apl.docs.dir}" destdir="${apl.docs.dir}"
+	                                          style="${apl.checkstyle.xsl.loc}">
+	                                          <param name="project" expression="${ant.project.name}"/>
+	                                          <param name="today" expression="${DSTAMP}"/>
+	                                          <param name="company" expression="${company}"/>
+	                                          <mapper type="glob" from="checkstyle.xml" to="checkstyle.html"/>
+	                                    </xslt>
+	        </target>
+	    <target name="-apl.pmd">
+
+	            <pmd rulesetfiles="${pmd.ruleset.file}">
+	                                        <auxclasspath>
+	                                           <path refid="android.target.classpath"/>
+	                                           <pathelement location="${out.classes.absolute.dir}" />
+	                                           <path refid="jar.libs.ref"/>
+	                                        </auxclasspath>
+	                                        <formatter type="xml" toFile="${apl.docs.dir}/pmd.xml"/>
+
+	                                        <fileset dir="${source.absolute.dir}" includes="**/*.java" />
+	                                    </pmd>
+	                                    <xslt basedir="${apl.docs.dir}" destdir="${apl.docs.dir}"
+	                                       style="${apl.pmd.xsl.loc}">
+	                                       <param name="project" expression="${ant.project.name}"/>
+	                                       <param name="today" expression="${DSTAMP}"/>
+	                                       <param name="comnpany" expression="${company}"/>
+	                                       <param name="rulesets" expression="androidrules"/>
+	                                       <mapper type="glob" from="pmd.xml" to="pmd.html"/>
+	                                    </xslt>
+	        </target>
+	    <target name="-apl.apivizdoclet">
+
+	            <javadoc
+	                            sourcepathref="apl.javadoc.source"
+	                            destdir="${apl.javadoc.dir}"
+	                            bootclasspathref="apl.android.project.libs"
+	                            private="true"
+	                            stylesheetfile="${javadoc.stylesheet}"
+	                            linksource="true"
+	                            linkoffline="${javadoc.linkoffline}"
+	                            windowtitle="${ant.project.name}"
+	                            additionalparam="-author  -version  -sourceclasspath ${out.classes.dir}">
+	                            <!-- Use a nice documentation title -->
+	                            <doctitle>
+	                                ${ant.project.name}&lt;/br>
+	                                API Specification
+	                            </doctitle>
+	                            <!-- Create a header that contains the taglets logo -->
+	                            <!-- Note the use of the {@docRoot} tag to link to the logo -->
+	                            <header>
+	                                &lt;img
+	                                src=&quot;{@docRoot}/resources/companylogo.png&quot;
+	                                width=&quot;88&quot; height=&quot;40&quot; border=&quot;0&quot;
+	                                &gt;
+	                            </header>
+	                            <!-- Same for the footer -->
+	                            <footer>
+	                                &lt;img
+	                                src=&quot;{@docRoot}/resources/companylogo.png&quot;
+	                                width=&quot;88&quot; height=&quot;40&quot;
+	                                &gt;
+	                            </footer>
+	                            <!-- Include a timestamp at the bottom of the docu generated -->
+	                            <!-- Note the use of ${timestamp} which was created by the -->
+	                            <!-- <tstamp> task at the start of this target -->
+	                            <bottom>
+	                                &lt;p align=&quot;right&quot;&gt;
+	                                &lt;font class=&quot;NavBarFont1&quot; size=&quot;-1&quot;&gt;
+	                                Android SDK API Target ${target}&lt;br&gt;
+	                                ${ant.project.name}&lt;br&gt;
+	                                API Spec&lt;br&gt;
+	                                ${TSTAMP} ${DSTAMP}
+	                                &lt;/font&gt;
+	                                &lt;/p&gt;
+	                            </bottom>
+	                            <doclet name="org.jboss.apiviz.APIviz"
+	                                path="${buildsystem.apiviz.loc}">
+	                            </doclet>
+	                    </javadoc>
+
+	        </target>
 
 </project>

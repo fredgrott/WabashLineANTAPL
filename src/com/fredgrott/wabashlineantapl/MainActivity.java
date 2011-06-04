@@ -1,4 +1,6 @@
-package com.mobilebytes.wabashlineantapl;
+package com.fredgrott.wabashlineantapl;
+
+import com.mobilebytes.wabashlineantapl.R;
 
 import android.app.Activity;
 import android.os.Bundle;
